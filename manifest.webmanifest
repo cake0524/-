@@ -1,7 +1,7 @@
 {
-  "name": "英语阅读雷达",
-  "short_name": "阅读雷达",
-  "description": "自动更新适合六级与考研英语训练的英文文章聚合页。",
+  "name": "丸犬犬英语学习邪修大法",
+  "short_name": "邪修大法",
+  "description": "直连板块与跳转板块外刊聚合，附长难句与参考译文，适合六级与考研英语精读。",
   "lang": "zh-CN",
   "start_url": "./index.html",
   "scope": "./",

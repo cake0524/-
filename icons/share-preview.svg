@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff8cf" />
+      <stop offset="52%" stop-color="#f7fbff" />
+      <stop offset="100%" stop-color="#d8f0f4" />
+    </linearGradient>
+    <linearGradient id="ink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#203547" />
+      <stop offset="100%" stop-color="#2f4b63" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" rx="40" fill="url(#bg)" />
+  <circle cx="1020" cy="112" r="52" fill="#ffde59" />
+  <circle cx="110" cy="84" r="20" fill="#c8eef2" />
+  <circle cx="1130" cy="536" r="26" fill="#c8eef2" />
+
+  <rect x="72" y="86" width="1056" height="458" rx="36" fill="#fffef9" stroke="#e0e7ea" stroke-width="3" />
+
+  <text x="110" y="154" fill="#7b8a97" font-size="28" font-family="Georgia, PingFang SC, serif" letter-spacing="8">ENGLISH READING  /  SHADOW CULTIVATION</text>
+  <text x="110" y="258" fill="url(#ink)" font-size="80" font-weight="700" font-family="PingFang SC, Microsoft YaHei, serif">丸犬犬英语学习邪修大法</text>
+
+  <text x="110" y="334" fill="#5f6f7d" font-size="34" font-family="PingFang SC, Microsoft YaHei, serif">直连板块优先读，跳转板块延伸读</text>
+  <text x="110" y="386" fill="#5f6f7d" font-size="30" font-family="PingFang SC, Microsoft YaHei, serif">每篇附 1-2 句长难句与参考译文，适合六级与考研英语精读</text>
+
+  <g transform="translate(738 198)">
+    <rect x="0" y="0" width="278" height="210" rx="32" fill="#213547" />
+    <path d="M52 36h76c24 0 44 20 44 44v92c-12-12-28-18-48-18H64c-13 0-24 11-24 24V60c0-13 11-24 24-24Z" fill="#fffef8"/>
+    <path d="M226 36h-76c-24 0-44 20-44 44v92c12-12 28-18 48-18h60c13 0 24 11 24 24V60c0-13-11-24-24-24Z" fill="#fff4be"/>
+    <path d="M139 48v116" stroke="#dcc871" stroke-width="8" stroke-linecap="round"/>
+    <path d="M189 0h32v118l-16-12-16 12V0Z" fill="#ffb703"/>
+    <path d="M60 90h42" stroke="#203547" stroke-width="9" stroke-linecap="round" />
+    <path d="M60 120h34" stroke="#203547" stroke-width="9" stroke-linecap="round" />
+    <path d="M160 90h38" stroke="#9a8125" stroke-width="9" stroke-linecap="round" />
+    <path d="M160 120h46" stroke="#9a8125" stroke-width="9" stroke-linecap="round" />
+    <path d="M18 226l54-74 28 21-54 74-34 10 6-31Z" fill="#ffde59" />
+    <path d="M91 173l15-20 28 21-15 20-28-21Z" fill="#f29f05" />
+  </g>
+
+  <g transform="translate(110 446)">
+    <rect width="180" height="52" rx="26" fill="#fff3b4" />
+    <text x="32" y="34" fill="#203547" font-size="26" font-family="PingFang SC, Microsoft YaHei, serif">直连板块</text>
+  </g>
+  <g transform="translate(312 446)">
+    <rect width="180" height="52" rx="26" fill="#d8f0f4" />
+    <text x="32" y="34" fill="#203547" font-size="26" font-family="PingFang SC, Microsoft YaHei, serif">跳转板块</text>
+  </g>
+  <g transform="translate(514 446)">
+    <rect width="236" height="52" rx="26" fill="#fff3b4" />
+    <text x="32" y="34" fill="#203547" font-size="26" font-family="PingFang SC, Microsoft YaHei, serif">长难句参考译文</text>
+  </g>
+</svg>
