@@ -13,6 +13,8 @@ const filterJumpBtn = document.getElementById("filter-jump");
 
 const STORAGE_KEY = "reading-radar-cache-v1";
 const REFRESH_INTERVAL = 10 * 60 * 1000;
+const FEED_REQUEST_TIMEOUT = 5000;
+const FEED_TOTAL_TIMEOUT = 6500;
 const MIN_ARTICLES = 5;
 const MAX_ARTICLES = 10;
 const FALLBACK_SUMMARY = "Open the article to read the full text from the original publisher.";
@@ -626,14 +628,81 @@ function parseXmlFeed(xmlText, feedMeta) {
 }
 
 async function fetchFeed(feedMeta) {
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedMeta.url)}`;
-  const response = await fetch(proxyUrl, { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(`${feedMeta.label} HTTP ${response.status}`);
+  const proxyCandidates = buildProxyCandidates(feedMeta.url);
+  let lastError = null;
+  const deadline = Date.now() + FEED_TOTAL_TIMEOUT;
+
+  for (const candidate of proxyCandidates) {
+    try {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) {
+        break;
+      }
+
+      const response = await fetchWithTimeout(
+        candidate.url,
+        Math.min(FEED_REQUEST_TIMEOUT, remaining),
+      );
+      if (!response.ok) {
+        throw new Error(`${feedMeta.label} ${candidate.name} HTTP ${response.status}`);
+      }
+
+      const xmlText = await readFeedText(response, candidate.mode);
+      if (!xmlText.trim()) {
+        throw new Error(`${feedMeta.label} ${candidate.name} empty body`);
+      }
+
+      return parseXmlFeed(xmlText, feedMeta);
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  const xmlText = await response.text();
-  return parseXmlFeed(xmlText, feedMeta);
+  throw new Error(`${feedMeta.label} unavailable: ${lastError?.message || "unknown error"}`);
+}
+
+function buildProxyCandidates(feedUrl) {
+  const encodedUrl = encodeURIComponent(feedUrl);
+  return [
+    {
+      name: "allorigins-raw",
+      mode: "text",
+      url: `https://api.allorigins.win/raw?url=${encodedUrl}`,
+    },
+    {
+      name: "isomorphic-cors",
+      mode: "text",
+      url: `https://cors.isomorphic-git.org/${feedUrl}`,
+    },
+    {
+      name: "allorigins-get",
+      mode: "json-contents",
+      url: `https://api.allorigins.win/get?url=${encodedUrl}`,
+    },
+  ];
+}
+
+async function readFeedText(response, mode) {
+  if (mode === "json-contents") {
+    const payload = await response.json();
+    return payload?.contents || "";
+  }
+
+  return response.text();
+}
+
+async function fetchWithTimeout(url, timeoutMs) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function chooseArticles(entries) {
