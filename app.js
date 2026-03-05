@@ -15,6 +15,7 @@ const STORAGE_KEY = "reading-radar-cache-v1";
 const REFRESH_INTERVAL = 10 * 60 * 1000;
 const FEED_REQUEST_TIMEOUT = 5000;
 const FEED_TOTAL_TIMEOUT = 6500;
+const FEED_WAIT_WINDOW = 3200;
 const MIN_ARTICLES = 5;
 const MAX_ARTICLES = 10;
 const FALLBACK_SUMMARY = "Open the article to read the full text from the original publisher.";
@@ -705,6 +706,21 @@ async function fetchWithTimeout(url, timeoutMs) {
   }
 }
 
+async function withTimeout(promise, timeoutMs, errorMessage) {
+  let timeoutId = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+  }
+}
+
 function chooseArticles(entries) {
   const allowedPublishers = new Set(ALLOWED_PUBLISHERS.values());
   const primarySeen = new Set();
@@ -1027,22 +1043,56 @@ function getOfflineFallbackArticles() {
   }));
 }
 
+function mergeWithCachedArticles(freshArticles, cachedArticles) {
+  if (!cachedArticles?.length) {
+    return freshArticles;
+  }
+
+  const merged = [...freshArticles];
+  const seen = new Set(freshArticles.map((article) => normalizeUrl(article.url)));
+
+  for (const article of cachedArticles) {
+    const key = normalizeUrl(article.url);
+    if (seen.has(key)) {
+      continue;
+    }
+
+    merged.push(article);
+    seen.add(key);
+
+    if (merged.length >= MAX_ARTICLES) {
+      break;
+    }
+  }
+
+  return merged;
+}
+
 async function refreshArticles() {
   setLoadingState("正在连接新闻源...");
 
   try {
     const cached = loadCache();
-    const settled = await Promise.allSettled(FEEDS.map(fetchFeed));
+    const settled = await Promise.allSettled(
+      FEEDS.map((feedMeta) =>
+        withTimeout(
+          fetchFeed(feedMeta),
+          FEED_WAIT_WINDOW,
+          `${feedMeta.label} refresh timeout`,
+        ),
+      ),
+    );
     const successfulFeeds = settled
       .filter((result) => result.status === "fulfilled")
       .flatMap((result) => result.value);
 
     const chosen = chooseArticles(successfulFeeds);
+    const mergedChosen = mergeWithCachedArticles(chosen, cached?.articles);
     if (!chosen.length) {
       throw new Error("No article matched the current filter.");
     }
 
-    if (shouldKeepCachedArticles(chosen, cached?.articles)) {
+    if (shouldKeepCachedArticles(mergedChosen, cached?.articles)) {
       renderArticles(cached.articles);
       lastUpdated.textContent = `缓存时间：${formatPublishedAt(cached.refreshedAt)}`;
       setReadyState("10 分钟内暂无新文章，已保留历史最新文章");
@@ -1050,10 +1100,15 @@ async function refreshArticles() {
     }
 
     const now = new Date();
-    renderArticles(chosen);
-    saveCache(chosen, now.toISOString());
+    renderArticles(mergedChosen);
+    saveCache(mergedChosen, now.toISOString());
     lastUpdated.textContent = `最近更新：${formatLastUpdated(now)}`;
-    setReadyState(`已更新 ${chosen.length} 篇训练文章`);
+    const hasCacheSupplement = mergedChosen.length > chosen.length;
+    if (hasCacheSupplement) {
+      setReadyState(`已快速更新 ${chosen.length} 篇，并补充缓存到 ${mergedChosen.length} 篇`);
+    } else {
+      setReadyState(`已快速更新 ${mergedChosen.length} 篇训练文章`);
+    }
   } catch (error) {
     const cached = loadCache();
     if (cached?.articles?.length) {
