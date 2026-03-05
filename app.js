@@ -16,6 +16,7 @@ const REFRESH_INTERVAL = 10 * 60 * 1000;
 const FEED_REQUEST_TIMEOUT = 5000;
 const FEED_TOTAL_TIMEOUT = 6500;
 const FEED_WAIT_WINDOW = 3200;
+const DIRECT_STAGE_WAIT_WINDOW = 1000;
 const MIN_ARTICLES = 5;
 const MAX_ARTICLES = 10;
 const FALLBACK_SUMMARY = "Open the article to read the full text from the original publisher.";
@@ -1068,23 +1069,52 @@ function mergeWithCachedArticles(freshArticles, cachedArticles) {
   return merged;
 }
 
+function getDirectFeeds() {
+  return FEEDS.filter((feedMeta) => DIRECT_ACCESS_PUBLISHERS.includes(feedMeta.source));
+}
+
+function getDirectArticles(articles) {
+  return articles.filter(isDirectAccessArticle);
+}
+
+async function fetchFeedBatch(feedList, waitWindow) {
+  const settled = await Promise.allSettled(
+    feedList.map((feedMeta) =>
+      withTimeout(
+        fetchFeed(feedMeta),
+        waitWindow,
+        `${feedMeta.label} refresh timeout`,
+      ),
+    ),
+  );
+
+  return settled
+    .filter((result) => result.status === "fulfilled")
+    .flatMap((result) => result.value);
+}
+
 async function refreshArticles() {
   setLoadingState("正在连接新闻源...");
 
   try {
     const cached = loadCache();
-    const settled = await Promise.allSettled(
-      FEEDS.map((feedMeta) =>
-        withTimeout(
-          fetchFeed(feedMeta),
-          FEED_WAIT_WINDOW,
-          `${feedMeta.label} refresh timeout`,
-        ),
-      ),
-    );
-    const successfulFeeds = settled
-      .filter((result) => result.status === "fulfilled")
-      .flatMap((result) => result.value);
+    const cachedDirectArticles = getDirectArticles(cached?.articles || []);
+    const directFeeds = getDirectFeeds();
+    const directEntries = await fetchFeedBatch(directFeeds, DIRECT_STAGE_WAIT_WINDOW);
+    const directChosen = getDirectArticles(chooseArticles(directEntries));
+
+    if (directChosen.length) {
+      const stagedDirect = mergeWithCachedArticles(directChosen, cachedDirectArticles);
+      renderArticles(stagedDirect);
+      lastUpdated.textContent = "分阶段加载：直连板块已优先更新";
+      setReadyState(`直连板块已加载 ${stagedDirect.length} 篇，正在补充跳转板块...`);
+    } else if (cachedDirectArticles.length) {
+      renderArticles(cachedDirectArticles);
+      lastUpdated.textContent = `缓存时间：${formatPublishedAt(cached.refreshedAt)}`;
+      setReadyState("分阶段加载：已先展示直连缓存，正在补充跳转板块...");
+    }
+
+    const successfulFeeds = await fetchFeedBatch(FEEDS, FEED_WAIT_WINDOW);
 
     const chosen = chooseArticles(successfulFeeds);
     const mergedChosen = mergeWithCachedArticles(chosen, cached?.articles);
